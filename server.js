@@ -85,6 +85,89 @@ app.get("/usuarios/:id/comentarios", async (request, response) => {
     }
 })
 
+// Supondo que isso está no mesmo app com Express + fs + JSON local
+import express from "express";
+import { promises as fs } from "node:fs";
+
+const DATABASE_URL = "./database/base_dados.json";
+const app = express();
+
+app.use(express.json());
+
+// Rota 6 - Média de progresso do curso
+app.get("/cursos/:id/media-progresso", async (req, res) => {
+  try {
+    const data = await fs.readFile(DATABASE_URL, "utf-8");
+    const db = JSON.parse(data);
+    const curso = db.cursos.find(c => c.id === req.params.id);
+    if (!curso) return res.status(404).json({ mensagem: "Curso não encontrado." });
+    const alunos = curso.alunos;
+    const progressos = db.usuarios.filter(u => alunos.includes(u.id)).map(u => u.progresso || 0);
+    const media = progressos.reduce((acc, val) => acc + val, 0) / progressos.length || 0;
+    res.json({ mediaProgresso: media });
+  } catch (err) {
+    res.status(500).json({ mensagem: "Erro ao calcular a média de progresso." });
+  }
+});
+
+// Rota 7 - Média de notas dos comentários
+app.get("/cursos/:id/media-nota", async (req, res) => {
+  try {
+    const data = await fs.readFile(DATABASE_URL, "utf-8");
+    const db = JSON.parse(data);
+    const curso = db.cursos.find(c => c.id === req.params.id);
+    if (!curso) return res.status(404).json({ mensagem: "Curso não encontrado." });
+    const comentarios = curso.comentarios || [];
+    const notas = comentarios.map(c => c.nota).filter(Boolean);
+    const media = notas.reduce((acc, val) => acc + val, 0) / notas.length || 0;
+    res.json({ mediaNota: media });
+  } catch (err) {
+    res.status(500).json({ mensagem: "Erro ao calcular a média de notas." });
+  }
+});
+
+// Rota 8 - Duração total do curso
+app.get("/cursos/:id/duracao-total", async (req, res) => {
+  try {
+    const data = await fs.readFile(DATABASE_URL, "utf-8");
+    const db = JSON.parse(data);
+    const curso = db.cursos.find(c => c.id === req.params.id);
+    if (!curso) return res.status(404).json({ mensagem: "Curso não encontrado." });
+    const duracaoTotal = curso.aulas.reduce((acc, aula) => acc + aula.duracao, 0);
+    res.json({ duracaoTotal });
+  } catch (err) {
+    res.status(500).json({ mensagem: "Erro ao calcular duração total." });
+  }
+});
+
+// Rota 9 - Qtd de cursos por instrutor
+app.get("/instrutores/:id/quantidade-cursos", async (req, res) => {
+  try {
+    const data = await fs.readFile(DATABASE_URL, "utf-8");
+    const db = JSON.parse(data);
+    const count = db.cursos.filter(c => c.instrutorId === req.params.id).length;
+    res.json({ quantidadeCursos: count });
+  } catch (err) {
+    res.status(500).json({ mensagem: "Erro ao contar cursos." });
+  }
+});
+
+// Rota 10 - Certificados por curso
+app.get("/certificados/por-curso", async (req, res) => {
+  try {
+    const data = await fs.readFile(DATABASE_URL, "utf-8");
+    const db = JSON.parse(data);
+    const resultado = {};
+    for (const cert of db.certificados) {
+      resultado[cert.cursoId] = (resultado[cert.cursoId] || 0) + 1;
+    }
+    res.json(resultado);
+  } catch (err) {
+    res.status(500).json({ mensagem: "Erro ao agrupar certificados." });
+  }
+});
+
+// Continuação nas próximas atualizações...
 
 app.listen(PORT, () => {
   console.log("Servido Iniciado na porta: " + PORT);
